@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenAlex FWCI チェッカー</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f6f5f2; --surface:#fcfcfb; --surface-2:#f0efeb; --line:#dddbd5; --grid:#e7e5e0;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#77756f;
+  --accent:#2a78d6; --accent-ink:#1c5cab; --series-1:#2a78d6; --series-2:#eb6834; --ref:#8a8880;
+  --warn-bg:#fff4dc; --warn-ink:#7a4f00; --bad:#b42318; --good:#0a7a3a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --line:#363633; --grid:#2c2c2a;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#9a998f;
+    --accent:#3987e5; --accent-ink:#86b6ef; --series-1:#3987e5; --series-2:#d95926; --ref:#77756f;
+    --warn-bg:#3a2e12; --warn-ink:#f3cf7a; --bad:#ff8a80; --good:#6fd39a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --line:#363633; --grid:#2c2c2a;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#9a998f;
+  --accent:#3987e5; --accent-ink:#86b6ef; --series-1:#3987e5; --series-2:#d95926; --ref:#77756f;
+  --warn-bg:#3a2e12; --warn-ink:#f3cf7a; --bad:#ff8a80; --good:#6fd39a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+main{max-width:1120px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:1.6rem;margin:0 0 4px;line-height:1.3}
+h2{font-size:1.15rem;margin:0 0 12px}
+h3{font-size:1rem;margin:20px 0 8px}
+p{margin:0 0 10px}
+a{color:var(--accent-ink)}
+.lead{color:var(--text-2);margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em}
+label{display:block;font-size:.85rem;color:var(--text-2);margin-bottom:4px}
+input[type=text],input[type=number],select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font:inherit}
+button{font:inherit;padding:8px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sub{background:transparent;color:var(--accent-ink)}
+button.ghost{background:transparent;border-color:var(--line);color:var(--text-2);padding:3px 9px;font-size:.85rem}
+button:disabled{opacity:.5;cursor:default}
+.row{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:end}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.radio{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem}
+.radio label{display:flex;gap:5px;align-items:center;margin:0;color:var(--text);font-size:.9rem}
+details>summary{cursor:pointer;color:var(--accent-ink)}
+.explain h3{margin-top:16px}
+.explain ul{margin:4px 0 10px;padding-left:1.3em}
+.note{background:var(--warn-bg);color:var(--warn-ink);border-radius:8px;padding:10px 14px;font-size:.9rem;margin:10px 0}
+.hit{border-top:1px solid var(--line);padding:10px 0}
+.hit .name{font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:.85rem}
+.chip button{border:0;background:transparent;color:var(--text-2);padding:0 6px}
+.progress{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:10px 0 4px}
+.progress>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.tile{background:var(--surface-2);border-radius:8px;padding:12px 14px}
+.tile .k{font-size:.8rem;color:var(--text-2)}
+.tile .v{font-size:1.6rem;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.3}
+.tile .s{font-size:.8rem;color:var(--muted)}
+.tablewrap{overflow-x:auto;margin:6px 0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{color:var(--text-2);font-weight:600;background:var(--surface);position:sticky;top:0}
+td.l,th.l{text-align:left}
+td.title{min-width:280px;max-width:460px}
+.bar{display:inline-block;height:8px;border-radius:0 4px 4px 0;background:var(--series-1);vertical-align:middle;margin-right:6px}
+.charts{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.chart h3{margin:0 0 2px}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart text{fill:var(--text-2);font-size:11px}
+.chart .grid{stroke:var(--grid)}
+.chart .axis{stroke:var(--line)}
+.chart .mark{fill:var(--series-1)}
+.chart .hl{fill:var(--accent-ink)}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:.82rem;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:10;display:none;max-width:320px}
+.err{color:var(--bad)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;flex-wrap:wrap}
+.tabs button{background:transparent;color:var(--text-2);border:0;border-bottom:2px solid transparent;border-radius:0;padding:6px 12px}
+.tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.scroll{max-height:560px;overflow:auto}
+@media (max-width:600px){ .card{padding:14px} .tile .v{font-size:1.35rem} }
+</style>
+</head>
+<body>
+<main>
+<h1>OpenAlex FWCI チェッカー</h1>
+<p class="lead">機関を指定して、OpenAlex が論文ごとに付けている FWCI（Field-Weighted Citation Impact）を集め、機関の「平均 FWCI」が何に支えられているか（分野・出版年・少数の高被引用論文・大規模共著）を確認するツールです。データはブラウザから OpenAlex API に直接問い合わせて取得します。サーバーへの登録やインストールは不要です。</p>
+
+<!-- ============ 解説 ============ -->
+<section class="card explain">
+<details>
+<summary><strong>FWCI とは？ 機関の FWCI をどう読むか（はじめに読む）</strong></summary>
+
+<h3>FWCI（Field-Weighted Citation Impact）</h3>
+<p>1本の論文について「実際の被引用数 ÷ 同じ出版年・同じ分野・同じ文献タイプの論文が世界平均で受ける被引用数（期待値）」を計算した値です。1.0 が世界平均、2.0 なら平均の2倍引用されていることになります。分野ごとの引用慣行の違い（医学は多く、数学や人文学は少ない、など）や、出版からの経過年数の違いをならして比べられるようにした指標です。</p>
+
+<h3>機関の FWCI は「論文 FWCI の算術平均」</h3>
+<p>Elsevier の SciVal などで示される機関の FWCI は、その機関が関わった論文の FWCI を単純に平均したものです。平均であることから、次の性質があります。</p>
+<ul>
+<li><strong>分布が大きく偏っている。</strong>大半の論文は FWCI 1 未満で、ごく一部の論文が数十〜数百の値をとります。そのため中央値は平均よりかなり低く、1 を下回るのが普通です。中央値が 1 未満でも、それだけで「低い」とは言えません。</li>
+<li><strong>論文数が少ない機関ほど、少数の論文で平均が大きく動く。</strong>1本の論文が平均に与える影響はおおよそ「その論文の FWCI ÷ 機関の論文数」です。例えば FWCI 500 の論文が1本あると、論文 1,000 本の機関では平均が約 0.5 上がりますが、10,000 本の機関では約 0.05 です。</li>
+<li><strong>大規模共著論文はまるごと数えられる。</strong>数百〜数千名が著者に並ぶ国際共同研究（疾病負荷研究、大型ゲノム研究、診療ガイドラインなど）は極端に引用されやすい一方、各機関の貢献はごく一部です。それでも平均 FWCI では、著者が1名参加しているだけの機関にも論文1本分がそのまま加わります（フルカウント）。</li>
+<li><strong>直近の論文は値が不安定。</strong>被引用は出版年を含む4年間で数えるため、出版から日が浅い論文の FWCI は暫定値で、今後大きく変わることがあります。</li>
+</ul>
+<p>このため、機関の FWCI は平均だけでなく、中央値、被引用上位10%論文の割合、上位論文や大規模共著を除いた平均と並べて読むことをおすすめします。</p>
+
+<h3>OpenAlex の FWCI</h3>
+<ul>
+<li>OpenAlex は論文ごとに <span class="mono">fwci</span> を提供しています。OpenAlex のヘルプによれば、被引用は出版年とその後3年間（計4年間）で数え、期待値は同じ出版年・文献タイプ・サブフィールドの論文の平均です。サブフィールドは掲載誌ではなく論文自体の内容から判定した主トピックによります。</li>
+<li><strong>全論文に付くわけではありません。</strong>主トピックが割り当てられていない論文や一部の文献タイプでは <span class="mono">fwci</span> が空（null）です。結果の「文献タイプ・FWCI の付与状況」で、どこが欠けているかを確認できます。このツールの平均は FWCI が付いている論文だけで計算します。</li>
+<li>FWCI とは別に、外れ値に強い指標として <span class="mono">citation_normalized_percentile</span>（同条件の論文の中での被引用の順位。上位10%・上位1% の判定付き）も併記します。</li>
+</ul>
+
+<h3>SciVal など他のデータベースの値とは一致しない</h3>
+<p>計算の考え方は同じでも、次の点が違うため、同じ機関・同じ期間でも数値は一致しません。</p>
+<ul>
+<li>収録論文の範囲（Scopus・Web of Science・OpenAlex で異なる）</li>
+<li>分野の分類（例: Scopus は掲載誌単位の ASJC 分類、OpenAlex は論文単位のサブフィールド）。同じ論文でも基準となる分野が変わり、FWCI が大きく変わることがあります。</li>
+<li>機関の範囲（附属病院・研究所を含むか、所属表記の名寄せ）。各データベースの機関定義によります。</li>
+<li>集計した時点（被引用は日々増えます）</li>
+</ul>
+<p>このツールで確かめられるのは、公表された値そのものではなく、「平均が少数の論文に押し上げられていないか」「どの分野・どの論文が効いているか」といった<strong>構造</strong>です。</p>
+
+<h3>機関の指定について</h3>
+<ul>
+<li>OpenAlex では、大学と附属病院・研究所が別の機関として登録されていることがよくあります。検索結果の「関連機関」から確認し、含める場合と含めない場合を比べてください。「下位機関も含める」にチェックすると、OpenAlex 上で子機関として登録されている機関もまとめて対象にします。</li>
+<li>複数の機関 ID を指定した場合、<strong>いずれかの機関の著者を含む論文</strong>を1回ずつ数えます（重複は除外）。</li>
+</ul>
+</details>
+
+<details style="margin-top:8px">
+<summary><strong>このツールの仕組みと制限</strong></summary>
+<ul>
+<li>OpenAlex API の <span class="mono">/works</span> を、機関 ID と出版年で絞り込んで全件取得し、ブラウザ内で集計します。</li>
+<li><strong>API キーなしでも使えます</strong>が、同じ IP アドレスからの利用で1日の無料枠を共有し、取得できるのは1回 10,000 件までです。それを超える機関は、<a href="https://openalex.org/settings/api" target="_blank" rel="noopener">OpenAlex の無料 API キー</a>を「API キー」欄に入れてください。キーはこのブラウザ内にだけ保存され、OpenAlex への問い合わせにのみ使われます。</li>
+<li>OpenAlex の一覧取得では著者が先頭 100 名までしか返らないため、著者 100 名以上の論文は1件ずつ全著者を取り直して「指定機関の著者数」「筆頭・最終・責任著者か」を判定します。</li>
+<li>結果は取得した時点の OpenAlex のデータです。被引用数やデータの修正により、日によって数値が変わります。</li>
+<li>条件はページの URL に入るので、URL を共有すれば同じ条件で集計できます（下の「使用例」参照）。</li>
+</ul>
+</details>
+</section>
+
+<!-- ============ 使用例 ============ -->
+<section class="card">
+<h2>使用例</h2>
+<p class="small muted">リンクを開くと、その条件で集計を始めます。URL の書き方は下の表のとおりです。</p>
+<ul class="small" style="padding-left:1.2em;margin:0 0 10px">
+<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;ref=2.23&amp;run=1">公表された機関 FWCI と見比べる</a>: 聖路加国際大学、2021–2025年。参考値 2.23 は AERA ムック『大学ランキング2027』（SciVal、2026年1月時点）に掲載された値です。</li>
+<li><a href="?ids=I4210092806,I4210087594&amp;from=2021&amp;to=2025&amp;ref=2.23&amp;run=1">附属病院を含めた場合と比べる</a>: 聖路加国際大学＋聖路加国際病院。</li>
+<li><a href="?ids=I160046202&amp;from=2021&amp;to=2025&amp;ref=1.76&amp;run=1">同じ条件で別の機関を見る</a>: 滋賀医科大学（同ランキングの値 1.76）。</li>
+<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;types=article%7Creview&amp;run=1">文献タイプを絞る</a>: article と review だけで集計。</li>
+</ul>
+<details><summary class="small">URL で指定できる条件</summary>
+<div class="tablewrap"><table class="small">
+<thead><tr><th class="l">パラメータ</th><th class="l">内容</th><th class="l">例</th></tr></thead>
+<tbody>
+<tr><td class="l mono">ids</td><td class="l">OpenAlex の機関 ID（カンマ区切りで複数可）</td><td class="l mono">ids=I4210092806,I4210087594</td></tr>
+<tr><td class="l mono">from / to</td><td class="l">出版年の範囲</td><td class="l mono">from=2021&amp;to=2025</td></tr>
+<tr><td class="l mono">types</td><td class="l">文献タイプ（<span class="mono">|</span> 区切り。省略するとすべて）</td><td class="l mono">types=article|review</td></tr>
+<tr><td class="l mono">lineage</td><td class="l">1 で下位機関も含める</td><td class="l mono">lineage=1</td></tr>
+<tr><td class="l mono">ref</td><td class="l">比較用の参考値</td><td class="l mono">ref=2.23</td></tr>
+<tr><td class="l mono">run</td><td class="l">1 で開いたらすぐ集計する</td><td class="l mono">run=1</td></tr>
+</tbody></table></div>
+</details>
+</section>
+
+<!-- ============ 入力 ============ -->
+<section class="card">
+<h2>1. 機関を選ぶ</h2>
+<form id="findForm" class="inline">
+  <input type="text" id="q" placeholder="機関名で検索（英語名がおすすめ）例: Kyoto University" style="flex:1;min-width:220px">
+  <button id="findBtn">検索</button>
+</form>
+<div id="hits"></div>
+
+<h3>集計対象の機関 ID</h3>
+<div id="chips" class="chips"></div>
+<div class="inline" style="margin-top:8px">
+  <input type="text" id="idInput" class="mono" placeholder="ID を直接入力（例: I4210092806）" style="flex:1;min-width:200px">
+  <button type="button" class="sub" id="addId">追加</button>
+</div>
+
+<h2 style="margin-top:22px">2. 条件</h2>
+<div class="row">
+  <div><label for="yFrom">出版年（から）</label><input type="number" id="yFrom" value="2021" min="1900" max="2100"></div>
+  <div><label for="yTo">出版年（まで）</label><input type="number" id="yTo" value="2025" min="1900" max="2100"></div>
+  <div><label for="topn">上位論文の表示件数</label><input type="number" id="topn" value="50" min="5" max="500"></div>
+  <div><label for="refval">比較用の参考値（任意）</label><input type="text" id="refval" value="" placeholder="例: 公表された FWCI"></div>
+</div>
+<div style="margin-top:10px">
+  <label>文献タイプ</label>
+  <div class="radio" id="typeRadio">
+    <label><input type="radio" name="types" value="" checked> すべて（SciVal に近い）</label>
+    <label><input type="radio" name="types" value="article|review"> article + review</label>
+    <label><input type="radio" name="types" value="article"> article のみ</label>
+  </div>
+</div>
+<div class="radio" style="margin-top:10px">
+  <label><input type="checkbox" id="lineage"> 指定機関の下位機関（OpenAlex 上の子機関）も含める</label>
+</div>
+<details style="margin-top:10px"><summary class="small">API キー・連絡先（任意）</summary>
+  <div class="row" style="margin-top:8px">
+    <div><label for="apikey">OpenAlex API キー</label><input type="text" id="apikey" class="mono" autocomplete="off"></div>
+    <div><label for="mailto">連絡先メール（polite pool 用）</label><input type="text" id="mailto" autocomplete="off"></div>
+  </div>
+  <p class="small muted">キーとメールはこのブラウザ内にだけ保存され、OpenAlex への問い合わせにのみ使われます。</p>
+</details>
+<div class="inline" style="margin-top:16px">
+  <button id="runBtn" type="button">論文を取得して集計</button>
+  <button id="stopBtn" type="button" class="sub" disabled>中止</button>
+  <span id="status" class="small muted"></span>
+</div>
+<div class="progress" id="prog" hidden><div></div></div>
+</section>
+
+<div id="results"></div>
+<div class="tip" id="tip"></div>
+</main>
+
+<script>
+"use strict";
+const API = "https://api.openalex.org";
+const LARGE = 100; // この著者数以上を「大規模共著」とみなす（一覧取得では著者が最大100名で打ち切られるので、該当論文は個別に取り直す）
+const SELECT = "id,doi,display_name,publication_year,type,fwci,cited_by_count,citation_normalized_percentile,authorships,primary_location,primary_topic";
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shortId = id => String(id || "").split("/").pop().toUpperCase();
+const f2 = x => Number.isFinite(x) ? x.toFixed(2) : "–";
+const pct = x => Number.isFinite(x) ? (x*100).toFixed(1) + "%" : "–";
+const num = x => Number.isFinite(x) ? x.toLocaleString() : "–";
+
+/* ---------- 保存（このブラウザだけ） ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("oafwci_"+k); return v == null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("oafwci_"+k, JSON.stringify(v)); }catch{} }
+};
+for (const id of ["yFrom","yTo","topn","refval","apikey","mailto"]) {
+  const v = store.get(id, null); if (v != null) $("#"+id).value = v;
+  $("#"+id).addEventListener("input", e => store.set(id, e.target.value));
+}
+$("#lineage").checked = store.get("lineage", false);
+$("#lineage").addEventListener("change", e => store.set("lineage", e.target.checked));
+const savedType = store.get("types", null);
+if (savedType != null) for (const r of document.querySelectorAll("input[name=types]")) r.checked = r.value === savedType;
+$("#typeRadio").addEventListener("change", e => store.set("types", e.target.value));
+
+/* 機関リスト: {id, name} */
+let insts = store.get("insts", []);
+/* URL の条件（共有リンク・使用例）が保存値より優先 */
+const qs = new URLSearchParams(location.search);
+if (qs.get("ids")) insts = qs.get("ids").split(/[,|\s]+/).filter(Boolean).map(id => ({id:shortId(id), name:""})).filter(x => /^I\d+$/.test(x.id));
+if (qs.get("from")) $("#yFrom").value = qs.get("from");
+if (qs.get("to")) $("#yTo").value = qs.get("to");
+if (qs.has("ref")) $("#refval").value = qs.get("ref");
+if (qs.has("types")) for (const r of document.querySelectorAll("input[name=types]")) r.checked = r.value === qs.get("types");
+if (qs.has("lineage")) $("#lineage").checked = qs.get("lineage") === "1";
+function renderChips(){
+  store.set("insts", insts);
+  $("#chips").innerHTML = insts.length ? insts.map((x,i) =>
+    `<span class="chip"><span class="mono">${esc(x.id)}</span>${esc(x.name)}<button type="button" data-del="${i}" aria-label="削除">✕</button></span>`).join("")
+    : '<span class="small muted">まだ選ばれていません。機関名で検索するか、ID を直接入力してください。</span>';
+}
+function addInst(id, name){
+  id = shortId(id); if (!/^I\d+$/.test(id)) return false;
+  if (!insts.some(x => x.id === id)) insts.push({id, name: name || ""});
+  renderChips(); if (!name) resolveNames(); return true;
+}
+/* 名前のない ID（URL や直接入力）の機関名を OpenAlex から補う */
+async function resolveNames(){
+  const miss = insts.filter(x => !x.name).map(x => x.id);
+  if (!miss.length) return;
+  try{
+    const data = await apiGet("/institutions", {filter: `openalex_id:${miss.join("|")}`, per_page: 50, select: "id,display_name"});
+    for (const inst of data.results || []){ const x = insts.find(y => y.id === shortId(inst.id)); if (x) x.name = inst.display_name; }
+    renderChips();
+  }catch{ /* 名前が取れなくても集計には影響しない */ }
+}
+$("#chips").addEventListener("click", e => { const b = e.target.closest("[data-del]"); if (!b) return; insts.splice(+b.dataset.del, 1); renderChips(); });
+$("#addId").addEventListener("click", () => {
+  const ok = $("#idInput").value.split(/[,\s]+/).filter(Boolean).map(v => addInst(v)).every(Boolean);
+  if (ok) $("#idInput").value = "";
+});
+renderChips();
+
+/* ---------- API ---------- */
+let ctl = null;
+async function apiGet(path, params, signal){
+  const p = new URLSearchParams(params);
+  const key = $("#apikey").value.trim(), mail = $("#mailto").value.trim();
+  if (key) p.set("api_key", key);
+  if (mail) p.set("mailto", mail);
+  const url = `${API}${path}?${p}`;
+  let wait = 2000;
+  for (let a = 0; a < 5; a++){
+    let r;
+    try { r = await fetch(url, {signal}); }
+    catch(e){
+      if (e.name === "AbortError") throw e;
+      if (a < 4){ await sleep(wait); wait *= 2; continue; }
+      throw new Error("OpenAlex に接続できませんでした。ネットワーク接続を確認してください。");
+    }
+    if (r.ok) return r.json();
+    if ([429,500,502,503,504].includes(r.status) && a < 4){ await sleep(wait); wait *= 2; continue; }
+    const body = (await r.text()).slice(0, 300);
+    throw new Error(`OpenAlex API エラー ${r.status}: ${body}`);
+  }
+}
+
+/* ---------- 機関検索 ---------- */
+$("#findForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("#q").value.trim(); if (!q) return;
+  const box = $("#hits"); $("#findBtn").disabled = true;
+  box.innerHTML = '<div class="muted small" style="margin-top:8px">検索中…</div>';
+  try{
+    const data = await apiGet("/institutions", {search:q, per_page:8});
+    const res = data.results || [];
+    if (!res.length){ box.innerHTML = '<div class="muted small" style="margin-top:8px">該当する機関が見つかりませんでした。英語名で検索してみてください。</div>'; return; }
+    box.innerHTML = `<div class="inline small" style="margin-top:10px;justify-content:space-between">
+        <span class="muted">検索結果 ${res.length} 件</span>
+        <button type="button" class="ghost" data-clear="1">✕ 検索結果を閉じる</button></div>` + res.map(inst => {
+      const id = shortId(inst.id);
+      const ja = inst.international?.display_name?.ja || "";
+      const rels = (inst.associated_institutions || []).map(a =>
+        `<div class="small">${esc({parent:"上位",child:"下位",related:"関連"}[a.relationship] || a.relationship)}　<span class="mono">${esc(shortId(a.id))}</span>　${esc(a.display_name)}
+          <button type="button" class="ghost" data-add="${esc(shortId(a.id))}" data-name="${esc(a.display_name)}">＋追加</button></div>`).join("");
+      return `<div class="hit"><div><span class="name">${esc(inst.display_name)}</span>${ja ? `（${esc(ja)}）` : ""}</div>
+        <div class="muted small"><span class="mono">${esc(id)}</span>　${esc(inst.country_code || "")}・${esc(inst.type || "")}・論文 ${num(inst.works_count||0)} 件
+          <a href="https://openalex.org/institutions/${esc(id)}" target="_blank" rel="noopener">OpenAlex で見る</a></div>
+        <div class="inline" style="margin-top:4px"><button type="button" class="ghost" data-add="${esc(id)}" data-name="${esc(inst.display_name)}">＋集計対象に追加</button>
+          <button type="button" class="ghost" data-only="${esc(id)}" data-name="${esc(inst.display_name)}">この機関だけにする</button></div>
+        ${rels ? `<details style="margin-top:4px"><summary class="small">関連機関 ${inst.associated_institutions.length} 件（病院など）</summary>${rels}</details>` : ""}</div>`;
+    }).join("");
+  }catch(err){ box.innerHTML = `<div class="err small">${esc(err.message)}</div>`; }
+  finally{ $("#findBtn").disabled = false; }
+});
+$("#hits").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.clear) $("#hits").innerHTML = "";
+  else if (b.dataset.add) addInst(b.dataset.add, b.dataset.name);
+  else if (b.dataset.only){ insts = []; addInst(b.dataset.only, b.dataset.name); }
+});
+
+/* ---------- 取得 ---------- */
+async function fetchWorks(ids, years, types, lineage, onProgress, signal){
+  const key = lineage ? "authorships.institutions.lineage" : "authorships.institutions.id";
+  const filt = [`${key}:${ids.join("|")}`, `publication_year:${years}`];
+  if (types) filt.push(`type:${types}`);
+  // API キーなしでは cursor ページングが使えないため page= で取得する（OpenAlex の上限で 10,000 件まで）
+  const useCursor = !!$("#apikey").value.trim();
+  const params = {filter: filt.join(","), per_page: 200, select: SELECT};
+  if (useCursor) params.cursor = "*"; else params.page = 1;
+  const works = []; let total = null;
+  while (true){
+    const data = await apiGet("/works", params, signal);
+    if (total == null){
+      total = data.meta?.count ?? 0;
+      if (!useCursor && total > 10000) throw new Error(`対象が ${num(total)} 件あり、API キーなしで取得できる 10,000 件を超えています。API キーを入力してください。`);
+    }
+    const res = data.results || [];
+    works.push(...res);
+    onProgress(works.length, total);
+    if (!res.length || works.length >= total) break;
+    if (useCursor){ if (!data.meta?.next_cursor) break; params.cursor = data.meta.next_cursor; }
+    else params.page++;
+    await sleep(120);
+  }
+  return {works, filter: filt.join(","), keyless: !useCursor};
+}
+
+function flatten(w, targetSet, lineage){
+  const auths = w.authorships || [];
+  const inst = new Set();
+  let nTarget = 0, firstT = false, lastT = false, corrT = false;
+  auths.forEach((a, i) => {
+    let hit = false;
+    for (const x of (a.institutions || [])){
+      if (x.id) inst.add(x.id);
+      const ids = [shortId(x.id), ...(lineage ? (x.lineage || []).map(shortId) : [])];
+      if (ids.some(id => targetSet.has(id))) hit = true;
+    }
+    if (hit){ nTarget++; if (i === 0) firstT = true; if (i === auths.length-1) lastT = true; if (a.is_corresponding) corrT = true; }
+  });
+  const cnp = w.citation_normalized_percentile || {};
+  const t = w.primary_topic || {};
+  return {
+    id: shortId(w.id), doi: (w.doi || "").replace("https://doi.org/", ""),
+    year: w.publication_year, type: w.type || "(不明)", fwci: (typeof w.fwci === "number") ? w.fwci : null,
+    cited: w.cited_by_count ?? 0, percentile: cnp.value ?? null,
+    top10: cnp.is_in_top_10_percent ?? null, top1: cnp.is_in_top_1_percent ?? null,
+    nAuth: auths.length, large: auths.length >= LARGE, nInst: inst.size,
+    nTarget, firstT, lastT, corrT,
+    source: w.primary_location?.source?.display_name || "",
+    field: t.field?.display_name || "(主トピックなし)", subfield: t.subfield?.display_name || "(主トピックなし)",
+    topic: t.display_name || "",
+    title: (w.display_name || "(タイトルなし)").replace(/\s+/g, " ")
+  };
+}
+
+/* ---------- 統計 ---------- */
+const sum = xs => xs.reduce((a,b)=>a+b,0);
+const mean = xs => xs.length ? sum(xs)/xs.length : NaN;
+const sorted = xs => [...xs].sort((a,b)=>a-b);
+const quantile = (xs,q) => { if (!xs.length) return NaN; const s=sorted(xs), pos=(s.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos); return s[lo]+(s[hi]-s[lo])*(pos-lo); };
+const median = xs => quantile(xs, .5);
+function bootstrapCI(xs, B=2000){
+  if (xs.length < 2) return [NaN, NaN];
+  const n = xs.length, ms = new Float64Array(B);
+  let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let b = 0; b < B; b++){ let s = 0; for (let i = 0; i < n; i++) s += xs[(rnd()*n)|0]; ms[b] = s/n; }
+  ms.sort(); return [ms[Math.floor(B*.025)], ms[Math.floor(B*.975)]];
+}
+function summarize(rows){
+  const f = rows.filter(r => r.fwci != null).map(r => r.fwci);
+  return { n: rows.length, nF: f.length, mean: mean(f), median: median(f), p90: quantile(f,.9),
+    ge1: f.length ? f.filter(x => x >= 1).length / f.length : NaN,
+    top10: rows.filter(r => r.top10 != null).length ? rows.filter(r => r.top10).length / rows.filter(r => r.top10 != null).length : NaN,
+    sumF: sum(f) };
+}
+function groupBy(rows, key){
+  const m = new Map();
+  for (const r of rows){ const k = typeof key === "function" ? key(r) : r[key]; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+  return m;
+}
+
+/* ---------- 実行 ---------- */
+let last = null;
+$("#runBtn").addEventListener("click", run);
+$("#stopBtn").addEventListener("click", () => ctl && ctl.abort());
+async function run(){
+  const ids = insts.map(x => x.id);
+  const y1 = parseInt($("#yFrom").value, 10), y2 = parseInt($("#yTo").value, 10);
+  if (!ids.length){ $("#status").textContent = "機関 ID を1つ以上指定してください。"; return; }
+  if (!(y1 <= y2)){ $("#status").textContent = "出版年の範囲を確認してください。"; return; }
+  const types = document.querySelector("input[name=types]:checked").value;
+  const lineage = $("#lineage").checked;
+  ctl = new AbortController();
+  $("#runBtn").disabled = true; $("#stopBtn").disabled = false;
+  $("#prog").hidden = false; $("#prog div").style.width = "0";
+  $("#status").textContent = "取得中…";
+  $("#results").innerHTML = ""; last = null;
+  try{
+    const {works, filter} = await fetchWorks(ids, `${y1}-${y2}`, types, lineage, (got, total) => {
+      $("#status").textContent = `取得中… ${num(got)} / ${num(total)} 件`;
+      $("#prog div").style.width = total ? (100*got/total) + "%" : "100%";
+    }, ctl.signal);
+    // 一覧取得では著者が先頭100名で打ち切られるため、該当論文だけ1件ずつ全著者を取り直す
+    const trunc = works.filter(w => (w.authorships || []).length >= LARGE);
+    for (let i = 0; i < trunc.length; i++){
+      $("#status").textContent = `大規模共著論文の全著者を取得中… ${i+1} / ${trunc.length} 件`;
+      $("#prog div").style.width = (100*(i+1)/trunc.length) + "%";
+      const full = await apiGet(`/works/${shortId(trunc[i].id)}`, {select: "id,authorships"}, ctl.signal);
+      if (full.authorships?.length) trunc[i].authorships = full.authorships;
+      await sleep(100);
+    }
+    const seen = new Set(), tset = new Set(ids);
+    const rows = [];
+    for (const w of works){ const id = shortId(w.id); if (seen.has(id)) continue; seen.add(id); rows.push(flatten(w, tset, lineage)); }
+    last = {rows, ids, y1, y2, types, lineage, filter, at: new Date()};
+    history.replaceState(null, "", "?" + conditionQuery(ids, y1, y2, types, lineage));
+    $("#status").textContent = `完了: ${num(rows.length)} 件`;
+    render(last);
+  }catch(err){
+    $("#status").innerHTML = err.name === "AbortError" ? "中止しました。" : `<span class="err">${esc(err.message)}</span>`;
+  }finally{
+    $("#runBtn").disabled = false; $("#stopBtn").disabled = true; $("#prog").hidden = true;
+  }
+}
+
+/* ---------- 描画 ---------- */
+function render(R){
+  const {rows} = R;
+  const S = summarize(rows);
+  const withF = rows.filter(r => r.fwci != null).sort((a,b) => b.fwci - a.fwci);
+  const fv = withF.map(r => r.fwci);
+  const ci = bootstrapCI(fv);
+  const ref = parseFloat($("#refval").value);
+  const topn = Math.max(5, Math.min(500, parseInt($("#topn").value, 10) || 50));
+  const nameList = insts.map(x => x.name ? `${x.name} (${x.id})` : x.id).join(" ＋ ");
+  const shareUrl = location.href.split("?")[0] + "?" + conditionQuery(R.ids, R.y1, R.y2, R.types, R.lineage) + "&run=1";
+  const typeLabel = R.types ? R.types.replace("|", " + ") : "すべて";
+
+  // 頑健性: 上位k本を除いた平均
+  const dropRows = [1,3,5,10,20,50].filter(k => k < fv.length).map(k => {
+    const rest = fv.slice(k);
+    return {k, mean: mean(rest), share: sum(fv.slice(0,k)) / S.sumF};
+  });
+  const noLarge = withF.filter(r => !r.large).map(r => r.fwci);
+  const largeN = withF.filter(r => r.large).length;
+  const leadT = withF.filter(r => r.firstT || r.lastT || r.corrT).map(r => r.fwci);
+
+  let html = `
+  <section class="card">
+    <h2>3. 結果</h2>
+    <p class="small muted">対象: ${esc(nameList)}／出版年 ${R.y1}–${R.y2}／文献タイプ: ${esc(typeLabel)}${R.lineage ? "／下位機関を含む" : ""}／取得 ${R.at.toLocaleString()}<br>
+    API フィルタ: <span class="mono">${esc(R.filter)}</span><br>
+    この条件の共有用 URL: <a href="${esc(shareUrl)}" class="mono" style="word-break:break-all">${esc(shareUrl)}</a></p>
+    <div class="tiles">
+      <div class="tile"><div class="k">平均 FWCI（OpenAlex）</div><div class="v">${f2(S.mean)}</div><div class="s">95%区間 ${f2(ci[0])}–${f2(ci[1])}（ブートストラップ）</div></div>
+      <div class="tile"><div class="k">中央値 FWCI</div><div class="v">${f2(S.median)}</div><div class="s">90パーセンタイル ${f2(S.p90)}</div></div>
+      <div class="tile"><div class="k">論文数</div><div class="v">${num(S.n)}</div><div class="s">うち FWCI あり ${num(S.nF)}（${pct(S.nF/S.n)}）</div></div>
+      <div class="tile"><div class="k">FWCI ≥ 1 の割合</div><div class="v">${pct(S.ge1)}</div><div class="s">世界平均以上の論文</div></div>
+      <div class="tile"><div class="k">被引用上位10%論文の割合</div><div class="v">${pct(S.top10)}</div><div class="s">期待値 10%。外れ値に強い指標</div></div>
+      ${Number.isFinite(ref) ? `<div class="tile"><div class="k">比較用の参考値</div><div class="v">${f2(ref)}</div><div class="s">SciVal 等の値。データ源・分類が違うため一致はしない</div></div>` : ""}
+    </div>
+    ${S.mean > 1.5 && S.median < 1.2 ? `<div class="note">平均（${f2(S.mean)}）に比べて中央値（${f2(S.median)}）が低く、平均が一部の高被引用論文に押し上げられている形です。下の「上位論文の影響」を確認してください。</div>` : ""}
+  </section>
+
+  <section class="card">
+    <h2>上位論文の影響</h2>
+    <p class="small muted">FWCI の高い順に論文を除いていくと平均がどう変わるか。上位数本で平均が大きく下がる場合、機関の FWCI はその数本に依存しています。</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">条件</th><th>論文数</th><th>平均 FWCI</th><th>除いた論文が FWCI 合計に占める割合</th></tr></thead>
+      <tbody>
+        <tr><td class="l">全論文（FWCI あり）</td><td>${num(fv.length)}</td><td>${f2(S.mean)}</td><td>–</td></tr>
+        ${dropRows.map(d => `<tr><td class="l">上位 ${d.k} 本を除く</td><td>${num(fv.length-d.k)}</td><td>${f2(d.mean)}</td><td>${pct(d.share)}</td></tr>`).join("")}
+        <tr><td class="l">著者 ${LARGE} 名以上の大規模共著（${num(largeN)} 本）を除く</td><td>${num(noLarge.length)}</td><td>${f2(mean(noLarge))}</td><td>${pct(1 - sum(noLarge)/S.sumF)}</td></tr>
+        <tr><td class="l">指定機関の著者が筆頭・最終・責任著者のいずれかの論文だけ</td><td>${num(leadT.length)}</td><td>${f2(mean(leadT))}</td><td class="muted">（参考）</td></tr>
+      </tbody></table></div>
+    <div class="charts" style="margin-top:12px">
+      <div class="chart" id="chLorenz"></div>
+      <div class="chart" id="chHist"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>内訳</h2>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="field" aria-selected="true">分野（field）</button>
+      <button role="tab" data-tab="subfield" aria-selected="false">サブフィールド</button>
+      <button role="tab" data-tab="year" aria-selected="false">出版年</button>
+      <button role="tab" data-tab="type" aria-selected="false">文献タイプ・FWCI の付与状況</button>
+      <button role="tab" data-tab="source" aria-selected="false">掲載誌</button>
+    </div>
+    <div id="breakdown"></div>
+  </section>
+
+  <section class="card">
+    <h2>FWCI 上位 ${topn} 本</h2>
+    <p class="small muted">「寄与」は FWCI 合計に占める割合。「うち指定機関」は著者のうち指定機関に所属する人数（著者 ${LARGE} 名以上の論文は1件ずつ全著者を取り直して数えています）。「機関の役割」は指定機関の著者が筆頭(F)・最終(L)・責任著者(C)にいるか。</p>
+    <div class="tablewrap scroll"><table>
+      <thead><tr><th>#</th><th class="l">論文</th><th>年</th><th>FWCI</th><th>寄与</th><th>被引用</th><th>著者数</th><th>うち指定機関</th><th>機関の役割</th><th class="l">サブフィールド</th></tr></thead>
+      <tbody>${withF.slice(0, topn).map((r,i) => `<tr>
+        <td>${i+1}</td>
+        <td class="l title"><a href="https://openalex.org/works/${esc(r.id)}" target="_blank" rel="noopener">${esc(r.title)}</a><div class="small muted">${esc(r.source)}${r.doi ? ` · <a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">DOI</a>` : ""} · ${esc(r.type)}</div></td>
+        <td>${r.year}</td><td><strong>${f2(r.fwci)}</strong></td><td>${pct(r.fwci/S.sumF)}</td><td>${num(r.cited)}</td>
+        <td>${num(r.nAuth)}</td><td>${r.nTarget}</td>
+        <td>${[r.firstT?"F":"", r.lastT?"L":"", r.corrT?"C":""].filter(Boolean).join(" ") || "–"}</td>
+        <td class="l small">${esc(r.subfield)}</td></tr>`).join("")}</tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>データの書き出し</h2>
+    <div class="inline">
+      <button type="button" id="dlAll">全論文 CSV</button>
+      <button type="button" class="sub" id="dlNull">FWCI なし論文 CSV</button>
+    </div>
+    <p class="small muted" style="margin-top:6px">CSV は UTF-8（BOM 付き）で、Excel でそのまま開けます。</p>
+  </section>`;
+  $("#results").innerHTML = html;
+
+  drawLorenz($("#chLorenz"), fv);
+  drawHist($("#chHist"), fv);
+  const tabs = $("#results .tabs");
+  const show = k => { tabs.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === k)); $("#breakdown").innerHTML = breakdown(rows, k, S); if (k === "year") drawYear($("#chYear"), rows); };
+  tabs.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) show(b.dataset.tab); });
+  show("field");
+  $("#dlAll").addEventListener("click", () => downloadCSV(rows, `fwci_${R.ids.join("+")}_${R.y1}-${R.y2}.csv`));
+  $("#dlNull").addEventListener("click", () => downloadCSV(rows.filter(r => r.fwci == null), `fwci_null_${R.ids.join("+")}_${R.y1}-${R.y2}.csv`));
+  $("#results").scrollIntoView({behavior:"smooth"});
+}
+
+function breakdown(rows, k, S){
+  const keyName = {field:"分野", subfield:"サブフィールド", year:"出版年", type:"文献タイプ", source:"掲載誌"}[k];
+  const g = [...groupBy(rows, k === "source" ? (r => r.source || "(不明)") : k).entries()].map(([key, rs]) => {
+    const s = summarize(rs); return {key, ...s, contrib: s.sumF / S.sumF};
+  });
+  if (k === "year") g.sort((a,b) => a.key - b.key);
+  else if (k === "type") g.sort((a,b) => b.n - a.n);
+  else g.sort((a,b) => b.sumF - a.sumF);
+  const list = k === "source" ? g.slice(0, 40) : g;
+  const maxC = Math.max(...list.map(x => x.contrib || 0), 1e-9);
+  let pre = "";
+  if (k === "year") pre = `<div class="chart" id="chYear" style="max-width:640px;margin-bottom:12px"></div>`;
+  if (k === "type") pre = `<p class="small muted">FWCI は全論文に付くわけではありません。「FWCI あり」の割合が低いタイプ・年は、平均の計算から外れています。主トピックがない論文は FWCI が付かないことが多いです。</p>`;
+  if (k === "field" || k === "subfield") pre = `<p class="small muted">分野は OpenAlex の主トピック（primary topic）による分類で、SciVal（ASJC）とは異なります。「FWCI 合計への寄与」が大きい分野が機関の平均を支えています。</p>`;
+  if (k === "source") pre = `<p class="small muted">FWCI 合計への寄与が大きい順に上位 40 誌。</p>`;
+  let extra = "";
+  if (k === "type"){
+    const nulls = rows.filter(r => r.fwci == null);
+    const noTopic = nulls.filter(r => r.subfield === "(主トピックなし)").length;
+    extra = `<p class="small" style="margin-top:8px">FWCI なし: ${num(nulls.length)} 件（うち主トピックなし ${num(noTopic)} 件）。年別の内訳は「出版年」タブで確認できます。</p>`;
+  }
+  return pre + `<div class="tablewrap scroll"><table>
+    <thead><tr><th class="l">${keyName}</th><th>論文数</th><th>FWCI あり</th><th>平均</th><th>中央値</th><th>FWCI≥1</th><th>上位10%</th><th class="l">FWCI 合計への寄与</th></tr></thead>
+    <tbody>${list.map(x => `<tr><td class="l">${esc(x.key)}</td><td>${num(x.n)}</td><td>${num(x.nF)}<span class="muted small">（${pct(x.nF/x.n)}）</span></td>
+      <td>${f2(x.mean)}</td><td>${f2(x.median)}</td><td>${pct(x.ge1)}</td><td>${pct(x.top10)}</td>
+      <td class="l" style="white-space:nowrap"><span class="bar" style="width:${Math.max(0, 120*(x.contrib||0)/maxC)}px"></span>${pct(x.contrib)}</td></tr>`).join("")}</tbody></table></div>` + extra;
+}
+
+/* ---------- チャート（SVG） ---------- */
+const tip = $("#tip");
+function showTip(e, html){ tip.innerHTML = html; tip.style.display = "block";
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px"; }
+function hideTip(){ tip.style.display = "none"; }
+function niceMax(v){ if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)); for (const m of [1,2,2.5,5,10]) if (m*p >= v) return m*p; return 10*p; }
+
+function barChart(el, title, sub, data, fmtTip, yLabel){
+  const W = 520, H = 240, m = {l:44, r:10, t:10, b:36};
+  const iw = W-m.l-m.r, ih = H-m.t-m.b, n = data.length;
+  const ymax = niceMax(Math.max(...data.map(d => d.v || 0)));
+  const bw = iw / n, gap = Math.max(2, bw*0.18);
+  const ticks = [0, .25, .5, .75, 1].map(t => t*ymax);
+  let s = `<h3>${title}</h3><div class="small muted">${sub}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">`;
+  for (const t of ticks){ const y = m.t + ih - ih*t/ymax; s += `<line class="grid" x1="${m.l}" x2="${W-m.r}" y1="${y}" y2="${y}"/><text x="${m.l-6}" y="${y+4}" text-anchor="end">${+t.toFixed(2)}</text>`; }
+  data.forEach((d, i) => {
+    const h = ih * (d.v || 0) / ymax, x = m.l + i*bw + gap/2, y = m.t + ih - h, w = bw - gap, r = Math.min(4, w/2, h);
+    if (h > 0) s += `<path class="mark" d="M${x},${m.t+ih} V${y+r} Q${x},${y} ${x+r},${y} H${x+w-r} Q${x+w},${y} ${x+w},${y+r} V${m.t+ih} Z"/>`;
+    s += `<rect data-i="${i}" x="${m.l+i*bw}" y="${m.t}" width="${bw}" height="${ih}" fill="transparent"/>`;
+    if (n <= 12 || i % Math.ceil(n/12) === 0) s += `<text x="${m.l+i*bw+bw/2}" y="${H-m.b+16}" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+  s += `<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>`;
+  if (yLabel) s += `<text x="${m.l}" y="${H-4}" class="muted">${yLabel}</text>`;
+  s += `</svg>`;
+  el.innerHTML = s;
+  el.querySelectorAll("rect[data-i]").forEach(r => {
+    const d = data[+r.dataset.i];
+    r.addEventListener("mousemove", e => showTip(e, fmtTip(d)));
+    r.addEventListener("mouseleave", hideTip);
+  });
+}
+
+function drawHist(el, fv){
+  const edges = [0, 0.0001, 0.5, 1, 2, 5, 10, 20, Infinity];
+  const labels = ["0", "0–0.5", "0.5–1", "1–2", "2–5", "5–10", "10–20", "20+"];
+  const c = labels.map(() => 0);
+  for (const x of fv){ for (let i = 0; i < labels.length; i++) if (x >= edges[i] && x < edges[i+1]){ c[i]++; break; } }
+  barChart(el, "FWCI の分布", "論文数。1 が世界平均", labels.map((l,i) => ({label:l, v:c[i]})),
+    d => `FWCI ${d.label}<br><strong>${num(d.v)}</strong> 本（${pct(d.v/fv.length)}）`, "FWCI の区間");
+}
+
+function drawYear(el, rows){
+  const g = [...groupBy(rows, "year").entries()].sort((a,b) => a[0]-b[0]).map(([y, rs]) => ({label:String(y), ...summarize(rs)}));
+  barChart(el, "出版年別の平均 FWCI", "直近の年は被引用の蓄積が少なく値が不安定になりやすい", g.map(x => ({...x, v: Number.isFinite(x.mean) ? x.mean : 0})),
+    d => `${d.label}年<br>平均 <strong>${f2(d.mean)}</strong>　中央値 ${f2(d.median)}<br>論文 ${num(d.n)}（FWCI あり ${num(d.nF)}）`);
+}
+
+function drawLorenz(el, fv){
+  // fv は降順。x = 上位 k 本（全体に対する割合）, y = FWCI 合計に占める累積割合
+  const W = 520, H = 240, m = {l:44, r:14, t:10, b:36}, iw = W-m.l-m.r, ih = H-m.t-m.b;
+  const n = fv.length, tot = sum(fv);
+  if (!n || !(tot > 0)){ el.innerHTML = ""; return; }
+  const pts = [[0,0]]; let acc = 0;
+  for (let i = 0; i < n; i++){ acc += fv[i]; pts.push([(i+1)/n, acc/tot]); }
+  const X = x => m.l + iw*x, Y = y => m.t + ih - ih*y;
+  const step = Math.max(1, Math.floor(n/400));
+  const path = pts.filter((p,i) => i % step === 0 || i === n).map((p,i) => `${i?"L":"M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+  let s = `<h3>FWCI 合計の集中度</h3><div class="small muted">上位 x% の論文が FWCI 合計の何%を占めるか（点線は均等な場合）</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="FWCI 合計の集中度">`;
+  for (const t of [0,.25,.5,.75,1]){
+    s += `<line class="grid" x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${m.l-6}" y="${Y(t)+4}" text-anchor="end">${t*100}%</text>`;
+    s += `<text x="${X(t)}" y="${H-m.b+16}" text-anchor="middle">${t*100}%</text>`;
+  }
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--ref)" stroke-dasharray="4 4"/>`;
+  s += `<path d="${path}" fill="none" stroke="var(--series-1)" stroke-width="2"/>`;
+  s += `<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>`;
+  s += `<line id="lzX" stroke="var(--text-2)" stroke-width="1" y1="${m.t}" y2="${m.t+ih}" visibility="hidden"/><circle id="lzP" r="4.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  s += `<rect id="lzHit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  s += `<text x="${m.l}" y="${H-4}">上位からの論文の割合</text></svg>`;
+  el.innerHTML = s;
+  const svg = el.querySelector("svg"), hit = el.querySelector("#lzHit"), lx = el.querySelector("#lzX"), lp = el.querySelector("#lzP");
+  hit.addEventListener("mousemove", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const k = Math.max(1, Math.min(n, Math.round(((p.x - m.l)/iw) * n)));
+    const [x, y] = pts[k];
+    lx.setAttribute("x1", X(x)); lx.setAttribute("x2", X(x)); lx.setAttribute("visibility", "visible");
+    lp.setAttribute("cx", X(x)); lp.setAttribute("cy", Y(y)); lp.setAttribute("visibility", "visible");
+    showTip(e, `上位 <strong>${num(k)}</strong> 本（${pct(x)}）で<br>FWCI 合計の <strong>${pct(y)}</strong><br>残りの平均 ${k < n ? f2(mean(fv.slice(k))) : "–"}`);
+  });
+  hit.addEventListener("mouseleave", () => { hideTip(); lx.setAttribute("visibility","hidden"); lp.setAttribute("visibility","hidden"); });
+}
+
+/* ---------- CSV ---------- */
+function downloadCSV(rows, name){
+  const cols = ["id","doi","year","type","fwci","cited","percentile","top10","top1","nAuth","nInst","nTarget","firstT","lastT","corrT","field","subfield","topic","source","title"];
+  const head = ["openalex_id","doi","year","type","fwci","cited_by_count","citation_percentile","top10pct","top1pct","n_authors","n_institutions","n_target_authors","target_first","target_last","target_corresponding","field","subfield","topic","source","title"];
+  const q = v => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const csv = "﻿" + [head.join(","), ...rows.map(r => cols.map(c => q(r[c])).join(","))].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- URL の条件 ---------- */
+function conditionQuery(ids, y1, y2, types, lineage){
+  const p = new URLSearchParams({ids: ids.join(","), from: y1, to: y2});
+  if (types) p.set("types", types);
+  if (lineage) p.set("lineage", "1");
+  const ref = $("#refval").value.trim();
+  if (ref) p.set("ref", ref);
+  return p.toString().replace(/%2C/g, ",").replace(/%7C/g, "|");
+}
+
+/* ---------- 起動時 ---------- */
+resolveNames();
+if (qs.get("run") === "1" && insts.length) run();
+</script>
+</body>
+</html>
