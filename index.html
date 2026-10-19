@@ -177,7 +177,7 @@ td.title{min-width:280px;max-width:460px}
 <section class="card">
 <h2>1. 機関を選ぶ</h2>
 <form id="findForm" class="inline">
-  <input type="text" id="q" placeholder="機関名で検索（英語名がおすすめ）例: Kyoto University" style="flex:1;min-width:220px">
+  <input type="text" id="q" placeholder="機関名で検索（例：Kyoto University, 聖路加国際大学）" style="flex:1;min-width:220px">
   <button id="findBtn">検索</button>
 </form>
 <div id="hits"></div>
@@ -323,7 +323,7 @@ $("#findForm").addEventListener("submit", async e => {
   try{
     const data = await apiGet("/institutions", {search:q, per_page:8});
     const res = data.results || [];
-    if (!res.length){ box.innerHTML = '<div class="muted small" style="margin-top:8px">該当する機関が見つかりませんでした。英語名で検索してみてください。</div>'; return; }
+    if (!res.length){ box.innerHTML = '<div class="muted small" style="margin-top:8px">該当する機関が見つかりませんでした。表記を変えて（日本語名・英語名など）検索してみてください。</div>'; return; }
     box.innerHTML = `<div class="inline small" style="margin-top:10px;justify-content:space-between">
         <span class="muted">検索結果 ${res.length} 件</span>
         <button type="button" class="ghost" data-clear="1">✕ 検索結果を閉じる</button></div>` + res.map(inst => {
@@ -336,7 +336,7 @@ $("#findForm").addEventListener("submit", async e => {
         <div class="muted small"><span class="mono">${esc(id)}</span>　${esc(inst.country_code || "")}・${esc(inst.type || "")}・論文 ${num(inst.works_count||0)} 件
           <a href="https://openalex.org/institutions/${esc(id)}" target="_blank" rel="noopener">OpenAlex で見る</a></div>
         <div class="inline" style="margin-top:4px"><button type="button" class="ghost" data-add="${esc(id)}" data-name="${esc(inst.display_name)}">＋集計対象に追加</button>
-          <button type="button" class="ghost" data-only="${esc(id)}" data-name="${esc(inst.display_name)}">この機関だけにする</button></div>
+          <button type="button" class="ghost" data-only="${esc(id)}" data-name="${esc(inst.display_name)}">この機関だけ集計する</button></div>
         ${rels ? `<details style="margin-top:4px"><summary class="small">関連機関 ${inst.associated_institutions.length} 件（病院など）</summary>${rels}</details>` : ""}</div>`;
     }).join("");
   }catch(err){ box.innerHTML = `<div class="err small">${esc(err.message)}</div>`; }
