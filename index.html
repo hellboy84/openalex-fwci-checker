@@ -144,22 +144,12 @@ td.title{min-width:280px;max-width:460px}
 <li><strong>API キーなしでも使えます</strong>が、同じ IP アドレスからの利用で1日の無料枠を共有し、取得できるのは1回 10,000 件までです。それを超える機関は、<a href="https://openalex.org/settings/api" target="_blank" rel="noopener">OpenAlex の無料 API キー</a>を「API キー」欄に入れてください。キーはこのブラウザ内にだけ保存され、OpenAlex への問い合わせにのみ使われます。</li>
 <li>OpenAlex の一覧取得では著者が先頭 100 名までしか返らないため、著者 100 名以上の論文は1件ずつ全著者を取り直して「指定機関の著者数」「筆頭・最終・責任著者か」を判定します。</li>
 <li>結果は取得した時点の OpenAlex のデータです。被引用数やデータの修正により、日によって数値が変わります。</li>
-<li>条件はページの URL に入るので、URL を共有すれば同じ条件で集計できます（下の「使用例」参照）。</li>
+<li>条件はページの URL に入るので、URL を共有すれば同じ条件で集計できます（下の「URL で指定できる条件」「使用例」参照）。</li>
 </ul>
 </details>
-</section>
 
-<!-- ============ 使用例 ============ -->
-<section class="card">
-<h2>使用例</h2>
-<p class="small muted">リンクを開くと、その条件で集計を始めます。URL の書き方は下の表のとおりです。</p>
-<ul class="small" style="padding-left:1.2em;margin:0 0 10px">
-<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;run=1">公表された機関 FWCI の中身を確かめる</a>: 聖路加国際大学、2021–2025年。AERA ムック『大学ランキング2027』で FWCI 2.23（SciVal、2026年1月時点）と紹介された機関です。</li>
-<li><a href="?ids=I4210092806,I4210087594&amp;from=2021&amp;to=2025&amp;run=1">附属病院を含めた場合と比べる</a>: 聖路加国際大学＋聖路加国際病院。</li>
-<li><a href="?ids=I160046202&amp;from=2021&amp;to=2025&amp;run=1">同じ条件で別の機関を見る</a>: 滋賀医科大学（同ランキングの値 1.76）。</li>
-<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;types=article%7Creview&amp;run=1">文献タイプを絞る</a>: article と review だけで集計。</li>
-</ul>
-<details><summary class="small">URL で指定できる条件</summary>
+<details style="margin-top:8px">
+<summary><strong>URL で指定できる条件</strong></summary>
 <div class="tablewrap"><table class="small">
 <thead><tr><th class="l">パラメータ</th><th class="l">内容</th><th class="l">例</th></tr></thead>
 <tbody>
@@ -169,6 +159,17 @@ td.title{min-width:280px;max-width:460px}
 <tr><td class="l mono">lineage</td><td class="l">1 で下位機関も含める</td><td class="l mono">lineage=1</td></tr>
 <tr><td class="l mono">run</td><td class="l">1 で開いたらすぐ集計する</td><td class="l mono">run=1</td></tr>
 </tbody></table></div>
+</details>
+
+<details style="margin-top:8px">
+<summary><strong>使用例</strong></summary>
+<p class="small muted" style="margin-top:8px">リンクを開くと、その条件で集計を始めます。</p>
+<ul class="small" style="padding-left:1.2em;margin:0">
+<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;run=1">公表された機関 FWCI の中身を確かめる</a>: 聖路加国際大学、2021–2025年。AERA ムック『大学ランキング2027』で FWCI 2.23（SciVal、2026年1月時点）と紹介された機関です。</li>
+<li><a href="?ids=I4210092806,I4210087594&amp;from=2021&amp;to=2025&amp;run=1">附属病院を含めた場合と比べる</a>: 聖路加国際大学＋聖路加国際病院。</li>
+<li><a href="?ids=I160046202&amp;from=2021&amp;to=2025&amp;run=1">同じ条件で別の機関を見る</a>: 滋賀医科大学（同ランキングの値 1.76）。</li>
+<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;types=article%7Creview&amp;run=1">文献タイプを絞る</a>: article と review だけで集計。</li>
+</ul>
 </details>
 </section>
 
