@@ -640,8 +640,8 @@ function drawHist(el, fv){
   const ranges = ["FWCI = 0（被引用ゼロ）", "0 より大きく 0.5 未満", "0.5 以上 1 未満", "1 以上 2 未満", "2 以上 5 未満", "5 以上 10 未満", "10 以上 20 未満", "20 以上"];
   const c = labels.map(() => 0);
   for (const x of fv){ if (x === 0){ c[0]++; continue; } c[1 + edges.findIndex(e => x < e)]++; }
-  barChart(el, "FWCI の分布", "縦軸は論文数。FWCI は 1 が世界平均。区間は左端以上・右端未満（例: 0.5–1 は 0.5 以上 1 未満）。ただし FWCI = 0（被引用ゼロ）は「0」に分けて数えています", labels.map((l,i) => ({label:l, range:ranges[i], v:c[i]})),
-    d => `FWCI ${d.range}<br><strong>${num(d.v)}</strong> 本（${pct(d.v/fv.length)}）`, "FWCI の区間");
+  barChart(el, "FWCI の分布", "縦軸は論文数。FWCI は 1 が世界平均。区間は左端以上・右端未満（例: 0.5–1 は 0.5 以上 1 未満）。ただし FWCI = 0（被引用ゼロ）は「0」に分けてカウント", labels.map((l,i) => ({label:l, range:ranges[i], v:c[i]})),
+    d => `${d.range}<br><strong>${num(d.v)}</strong> 本（${pct(d.v/fv.length)}）`, "FWCI の区間");
 }
 
 function drawYear(el, rows){
