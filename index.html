@@ -154,9 +154,9 @@ td.title{min-width:280px;max-width:460px}
 <h2>使用例</h2>
 <p class="small muted">リンクを開くと、その条件で集計を始めます。URL の書き方は下の表のとおりです。</p>
 <ul class="small" style="padding-left:1.2em;margin:0 0 10px">
-<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;ref=2.23&amp;run=1">公表された機関 FWCI と見比べる</a>: 聖路加国際大学、2021–2025年。参考値 2.23 は AERA ムック『大学ランキング2027』（SciVal、2026年1月時点）に掲載された値です。</li>
-<li><a href="?ids=I4210092806,I4210087594&amp;from=2021&amp;to=2025&amp;ref=2.23&amp;run=1">附属病院を含めた場合と比べる</a>: 聖路加国際大学＋聖路加国際病院。</li>
-<li><a href="?ids=I160046202&amp;from=2021&amp;to=2025&amp;ref=1.76&amp;run=1">同じ条件で別の機関を見る</a>: 滋賀医科大学（同ランキングの値 1.76）。</li>
+<li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;run=1">公表された機関 FWCI の中身を確かめる</a>: 聖路加国際大学、2021–2025年。AERA ムック『大学ランキング2027』で FWCI 2.23（SciVal、2026年1月時点）と紹介された機関です。</li>
+<li><a href="?ids=I4210092806,I4210087594&amp;from=2021&amp;to=2025&amp;run=1">附属病院を含めた場合と比べる</a>: 聖路加国際大学＋聖路加国際病院。</li>
+<li><a href="?ids=I160046202&amp;from=2021&amp;to=2025&amp;run=1">同じ条件で別の機関を見る</a>: 滋賀医科大学（同ランキングの値 1.76）。</li>
 <li><a href="?ids=I4210092806&amp;from=2021&amp;to=2025&amp;types=article%7Creview&amp;run=1">文献タイプを絞る</a>: article と review だけで集計。</li>
 </ul>
 <details><summary class="small">URL で指定できる条件</summary>
@@ -167,7 +167,6 @@ td.title{min-width:280px;max-width:460px}
 <tr><td class="l mono">from / to</td><td class="l">出版年の範囲</td><td class="l mono">from=2021&amp;to=2025</td></tr>
 <tr><td class="l mono">types</td><td class="l">文献タイプ（<span class="mono">|</span> 区切り。省略するとすべて）</td><td class="l mono">types=article|review</td></tr>
 <tr><td class="l mono">lineage</td><td class="l">1 で下位機関も含める</td><td class="l mono">lineage=1</td></tr>
-<tr><td class="l mono">ref</td><td class="l">比較用の参考値</td><td class="l mono">ref=2.23</td></tr>
 <tr><td class="l mono">run</td><td class="l">1 で開いたらすぐ集計する</td><td class="l mono">run=1</td></tr>
 </tbody></table></div>
 </details>
@@ -194,7 +193,6 @@ td.title{min-width:280px;max-width:460px}
   <div><label for="yFrom">出版年（から）</label><input type="number" id="yFrom" value="2021" min="1900" max="2100"></div>
   <div><label for="yTo">出版年（まで）</label><input type="number" id="yTo" value="2025" min="1900" max="2100"></div>
   <div><label for="topn">上位論文の表示件数</label><input type="number" id="topn" value="50" min="5" max="500"></div>
-  <div><label for="refval">比較用の参考値（任意）</label><input type="text" id="refval" value="" placeholder="例: 公表された FWCI"></div>
 </div>
 <div style="margin-top:10px">
   <label>文献タイプ</label>
@@ -244,7 +242,7 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem("oafwci_"+k); return v == null ? d : JSON.parse(v); }catch{ return d; } },
   set(k, v){ try{ localStorage.setItem("oafwci_"+k, JSON.stringify(v)); }catch{} }
 };
-for (const id of ["yFrom","yTo","topn","refval","apikey","mailto"]) {
+for (const id of ["yFrom","yTo","topn","apikey","mailto"]) {
   const v = store.get(id, null); if (v != null) $("#"+id).value = v;
   $("#"+id).addEventListener("input", e => store.set(id, e.target.value));
 }
@@ -261,7 +259,6 @@ const qs = new URLSearchParams(location.search);
 if (qs.get("ids")) insts = qs.get("ids").split(/[,|\s]+/).filter(Boolean).map(id => ({id:shortId(id), name:""})).filter(x => /^I\d+$/.test(x.id));
 if (qs.get("from")) $("#yFrom").value = qs.get("from");
 if (qs.get("to")) $("#yTo").value = qs.get("to");
-if (qs.has("ref")) $("#refval").value = qs.get("ref");
 if (qs.has("types")) for (const r of document.querySelectorAll("input[name=types]")) r.checked = r.value === qs.get("types");
 if (qs.has("lineage")) $("#lineage").checked = qs.get("lineage") === "1";
 function renderChips(){
@@ -484,7 +481,6 @@ function render(R){
   const withF = rows.filter(r => r.fwci != null).sort((a,b) => b.fwci - a.fwci);
   const fv = withF.map(r => r.fwci);
   const ci = bootstrapCI(fv);
-  const ref = parseFloat($("#refval").value);
   const topn = Math.max(5, Math.min(500, parseInt($("#topn").value, 10) || 50));
   const nameList = insts.map(x => x.name ? `${x.name} (${x.id})` : x.id).join(" ＋ ");
   const shareUrl = location.href.split("?")[0] + "?" + conditionQuery(R.ids, R.y1, R.y2, R.types, R.lineage) + "&run=1";
@@ -511,7 +507,6 @@ function render(R){
       <div class="tile"><div class="k">論文数</div><div class="v">${num(S.n)}</div><div class="s">うち FWCI あり ${num(S.nF)}（${pct(S.nF/S.n)}）</div></div>
       <div class="tile"><div class="k">FWCI ≥ 1 の割合</div><div class="v">${pct(S.ge1)}</div><div class="s">世界平均以上の論文</div></div>
       <div class="tile"><div class="k">被引用上位10%論文の割合</div><div class="v">${pct(S.top10)}</div><div class="s">期待値 10%。外れ値に強い指標</div></div>
-      ${Number.isFinite(ref) ? `<div class="tile"><div class="k">比較用の参考値</div><div class="v">${f2(ref)}</div><div class="s">SciVal 等の値。データ源・分類が違うため一致はしない</div></div>` : ""}
     </div>
     ${S.mean > 1.5 && S.median < 1.2 ? `<div class="note">平均（${f2(S.mean)}）に比べて中央値（${f2(S.median)}）が低く、平均が一部の高被引用論文に押し上げられている形です。下の「上位論文の影響」を確認してください。</div>` : ""}
   </section>
@@ -707,8 +702,6 @@ function conditionQuery(ids, y1, y2, types, lineage){
   const p = new URLSearchParams({ids: ids.join(","), from: y1, to: y2});
   if (types) p.set("types", types);
   if (lineage) p.set("lineage", "1");
-  const ref = $("#refval").value.trim();
-  if (ref) p.set("ref", ref);
   return p.toString().replace(/%2C/g, ",").replace(/%7C/g, "|");
 }
 
