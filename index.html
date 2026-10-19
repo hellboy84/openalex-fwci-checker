@@ -497,7 +497,7 @@ function render(R){
     API フィルタ: <span class="mono">${esc(R.filter)}</span><br>
     この条件の共有用 URL: <a href="${esc(shareUrl)}" class="mono" style="word-break:break-all">${esc(shareUrl)}</a></p>
     <div class="tiles">
-      <div class="tile"><div class="k">平均 FWCI（OpenAlex）</div><div class="v">${f2(S.mean)}</div><div class="s">標準偏差 ${f2(S.sd)}</div></div>
+      <div class="tile"><div class="k">平均 FWCI</div><div class="v">${f2(S.mean)}</div><div class="s">標準偏差 ${f2(S.sd)}</div></div>
       <div class="tile"><div class="k">中央値 FWCI</div><div class="v">${f2(S.median)}</div><div class="s">第1四分位 ${f2(S.q1)}・第3四分位 ${f2(S.q3)}・最大 ${f2(S.max)}</div></div>
       <div class="tile"><div class="k">論文数</div><div class="v">${num(S.n)}</div><div class="s">うち FWCI あり ${num(S.nF)}（${pct(S.nF/S.n)}）</div></div>
       <div class="tile"><div class="k">FWCI ≥ 1 の割合</div><div class="v">${pct(S.ge1)}</div><div class="s">世界平均以上の論文</div></div>
