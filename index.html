@@ -503,7 +503,7 @@ function render(R){
       <div class="tile"><div class="k">FWCI ≥ 1 の割合</div><div class="v">${pct(S.ge1)}</div><div class="s">世界平均以上の論文</div></div>
       <div class="tile"><div class="k">被引用上位10%論文の割合</div><div class="v">${pct(S.top10)}</div><div class="s">世界全体では定義上 10%。外れ値に強い指標</div></div>
     </div>
-    ${S.mean > 1.5 && S.median < 1.2 ? `<div class="note">平均（${f2(S.mean)}）に比べて中央値（${f2(S.median)}）が低く、平均が一部の高被引用論文に押し上げられている形です。下の「上位論文の影響」を確認してください。</div>` : ""}
+    <p class="small muted" style="margin:10px 0 0">平均と中央値の差が大きい場合、一部の高被引用論文に平均が押し上げられている可能性があります。下の「上位論文の影響」を確認してください。</p>
   </section>
 
   <section class="card">
