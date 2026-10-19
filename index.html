@@ -118,7 +118,7 @@ td.title{min-width:280px;max-width:460px}
 <ul>
 <li>OpenAlex は論文ごとに <span class="mono">fwci</span> を提供しています。OpenAlex のヘルプによれば、被引用は出版年とその後3年間（計4年間）で数え、期待値は同じ出版年・文献タイプ・サブフィールドの論文の平均です。サブフィールドは掲載誌ではなく論文自体の内容から判定した主トピックによります。</li>
 <li><strong>全論文に付くわけではありません。</strong>主トピックが割り当てられていない論文や一部の文献タイプでは <span class="mono">fwci</span> が空（null）です。結果の「文献タイプ・FWCI の付与状況」で、どこが欠けているかを確認できます。このツールの平均は FWCI が付いている論文だけで計算します。</li>
-<li>FWCI とは別に、外れ値に強い指標として <span class="mono">citation_normalized_percentile</span>（同条件の論文の中での被引用の順位。上位10%・上位1% の判定付き）も併記します。</li>
+<li>FWCI とは別に、外れ値に強い指標として「被引用上位10%論文の割合」も併記します。OpenAlex が論文ごとに付けている <span class="mono">citation_normalized_percentile</span>（同じ出版年・文献タイプ・サブフィールドの論文の中での被引用数の順位）のうち、上位10%に入るという判定（<span class="mono">is_in_top_10_percent</span>）が付いた論文の割合です。世界全体では定義上 10% になるので、10% を超えれば平均より多く引用されていることを意味します。1本の論文が何千回引用されても「上位10%に入った1本」としか数えないため、平均 FWCI のように少数の論文で大きく動くことがありません。同じ考え方の指標（PP(top 10%)）は、CWTS ライデン・ランキングで主指標として使われています。</li>
 </ul>
 
 <h3>SciVal など他のデータベースの値とは一致しない</h3>
@@ -412,16 +412,10 @@ const mean = xs => xs.length ? sum(xs)/xs.length : NaN;
 const sorted = xs => [...xs].sort((a,b)=>a-b);
 const quantile = (xs,q) => { if (!xs.length) return NaN; const s=sorted(xs), pos=(s.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos); return s[lo]+(s[hi]-s[lo])*(pos-lo); };
 const median = xs => quantile(xs, .5);
-function bootstrapCI(xs, B=2000){
-  if (xs.length < 2) return [NaN, NaN];
-  const n = xs.length, ms = new Float64Array(B);
-  let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
-  for (let b = 0; b < B; b++){ let s = 0; for (let i = 0; i < n; i++) s += xs[(rnd()*n)|0]; ms[b] = s/n; }
-  ms.sort(); return [ms[Math.floor(B*.025)], ms[Math.floor(B*.975)]];
-}
+const sd = xs => { if (xs.length < 2) return NaN; const m = mean(xs); return Math.sqrt(sum(xs.map(x => (x-m)**2)) / (xs.length-1)); };
 function summarize(rows){
   const f = rows.filter(r => r.fwci != null).map(r => r.fwci);
-  return { n: rows.length, nF: f.length, mean: mean(f), median: median(f), p90: quantile(f,.9),
+  return { n: rows.length, nF: f.length, mean: mean(f), sd: sd(f), median: median(f), q1: quantile(f,.25), q3: quantile(f,.75), max: f.length ? Math.max(...f) : NaN,
     ge1: f.length ? f.filter(x => x >= 1).length / f.length : NaN,
     top10: rows.filter(r => r.top10 != null).length ? rows.filter(r => r.top10).length / rows.filter(r => r.top10 != null).length : NaN,
     sumF: sum(f) };
@@ -482,7 +476,6 @@ function render(R){
   const S = summarize(rows);
   const withF = rows.filter(r => r.fwci != null).sort((a,b) => b.fwci - a.fwci);
   const fv = withF.map(r => r.fwci);
-  const ci = bootstrapCI(fv);
   const topn = Math.max(5, Math.min(500, parseInt($("#topn").value, 10) || 50));
   const nameList = insts.map(x => x.name ? `${x.name} (${x.id})` : x.id).join(" ＋ ");
   const shareUrl = location.href.split("?")[0] + "?" + conditionQuery(R.ids, R.y1, R.y2, R.types, R.lineage) + "&run=1";
@@ -504,11 +497,11 @@ function render(R){
     API フィルタ: <span class="mono">${esc(R.filter)}</span><br>
     この条件の共有用 URL: <a href="${esc(shareUrl)}" class="mono" style="word-break:break-all">${esc(shareUrl)}</a></p>
     <div class="tiles">
-      <div class="tile"><div class="k">平均 FWCI（OpenAlex）</div><div class="v">${f2(S.mean)}</div><div class="s">95%区間 ${f2(ci[0])}–${f2(ci[1])}（ブートストラップ）</div></div>
-      <div class="tile"><div class="k">中央値 FWCI</div><div class="v">${f2(S.median)}</div><div class="s">90パーセンタイル ${f2(S.p90)}</div></div>
+      <div class="tile"><div class="k">平均 FWCI（OpenAlex）</div><div class="v">${f2(S.mean)}</div><div class="s">標準偏差 ${f2(S.sd)}</div></div>
+      <div class="tile"><div class="k">中央値 FWCI</div><div class="v">${f2(S.median)}</div><div class="s">第1四分位 ${f2(S.q1)}・第3四分位 ${f2(S.q3)}・最大 ${f2(S.max)}</div></div>
       <div class="tile"><div class="k">論文数</div><div class="v">${num(S.n)}</div><div class="s">うち FWCI あり ${num(S.nF)}（${pct(S.nF/S.n)}）</div></div>
       <div class="tile"><div class="k">FWCI ≥ 1 の割合</div><div class="v">${pct(S.ge1)}</div><div class="s">世界平均以上の論文</div></div>
-      <div class="tile"><div class="k">被引用上位10%論文の割合</div><div class="v">${pct(S.top10)}</div><div class="s">期待値 10%。外れ値に強い指標</div></div>
+      <div class="tile"><div class="k">被引用上位10%論文の割合</div><div class="v">${pct(S.top10)}</div><div class="s">世界全体では定義上 10%。外れ値に強い指標</div></div>
     </div>
     ${S.mean > 1.5 && S.median < 1.2 ? `<div class="note">平均（${f2(S.mean)}）に比べて中央値（${f2(S.median)}）が低く、平均が一部の高被引用論文に押し上げられている形です。下の「上位論文の影響」を確認してください。</div>` : ""}
   </section>
@@ -628,7 +621,7 @@ function barChart(el, title, sub, data, fmtTip, yLabel){
     if (n <= 12 || i % Math.ceil(n/12) === 0) s += `<text x="${m.l+i*bw+bw/2}" y="${H-m.b+16}" text-anchor="middle">${esc(d.label)}</text>`;
   });
   s += `<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>`;
-  if (yLabel) s += `<text x="${m.l}" y="${H-4}" class="muted">${yLabel}</text>`;
+  if (yLabel) s += `<text x="${m.l + iw/2}" y="${H-4}" text-anchor="middle">${yLabel}</text>`;
   s += `</svg>`;
   el.innerHTML = s;
   el.querySelectorAll("rect[data-i]").forEach(r => {
@@ -639,11 +632,12 @@ function barChart(el, title, sub, data, fmtTip, yLabel){
 }
 
 function drawHist(el, fv){
-  const edges = [0, 0.0001, 0.5, 1, 2, 5, 10, 20, Infinity];
+  // 「0」は FWCI がちょうど 0（被引用なし）。他の区間は「左端以上・右端未満」（0–0.5 は 0 より大きく 0.5 未満）
+  const edges = [0.5, 1, 2, 5, 10, 20, Infinity];
   const labels = ["0", "0–0.5", "0.5–1", "1–2", "2–5", "5–10", "10–20", "20+"];
   const c = labels.map(() => 0);
-  for (const x of fv){ for (let i = 0; i < labels.length; i++) if (x >= edges[i] && x < edges[i+1]){ c[i]++; break; } }
-  barChart(el, "FWCI の分布", "論文数。1 が世界平均", labels.map((l,i) => ({label:l, v:c[i]})),
+  for (const x of fv){ if (x === 0){ c[0]++; continue; } c[1 + edges.findIndex(e => x < e)]++; }
+  barChart(el, "FWCI の分布", "縦軸は論文数。FWCI は 1 が世界平均。区間は「左端以上・右端未満」（例: 0.5–1 は 0.5 以上 1 未満）、「0」は被引用ゼロの論文", labels.map((l,i) => ({label:l, v:c[i]})),
     d => `FWCI ${d.label}<br><strong>${num(d.v)}</strong> 本（${pct(d.v/fv.length)}）`, "FWCI の区間");
 }
 
@@ -673,7 +667,7 @@ function drawLorenz(el, fv){
   s += `<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>`;
   s += `<line id="lzX" stroke="var(--text-2)" stroke-width="1" y1="${m.t}" y2="${m.t+ih}" visibility="hidden"/><circle id="lzP" r="4.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
   s += `<rect id="lzHit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
-  s += `<text x="${m.l}" y="${H-4}">上位からの論文の割合</text></svg>`;
+  s += `<text x="${m.l + iw/2}" y="${H-4}" text-anchor="middle">上位からの論文の割合</text></svg>`;
   el.innerHTML = s;
   const svg = el.querySelector("svg"), hit = el.querySelector("#lzHit"), lx = el.querySelector("#lzX"), lp = el.querySelector("#lzP");
   hit.addEventListener("mousemove", e => {
