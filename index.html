@@ -657,16 +657,20 @@ function drawLorenz(el, fv){
   if (!n || !(tot > 0)){ el.innerHTML = ""; return; }
   const pts = [[0,0]]; let acc = 0;
   for (let i = 0; i < n; i++){ acc += fv[i]; pts.push([(i+1)/n, acc/tot]); }
+  // ジニ係数 = 曲線と対角線に挟まれた面積の2倍（昇順の x_(i) で G = 2Σ i·x_(i) / (nΣx) − (n+1)/n）
+  let wsum = 0; for (let i = 0; i < n; i++) wsum += (i+1) * fv[n-1-i];
+  const gini = 2*wsum/(n*tot) - (n+1)/n;
   const X = x => m.l + iw*x, Y = y => m.t + ih - ih*y;
   const step = Math.max(1, Math.floor(n/400));
   const path = pts.filter((p,i) => i % step === 0 || i === n).map((p,i) => `${i?"L":"M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
-  let s = `<h3>FWCI 合計の集中度</h3><div class="small muted">上位 x% の論文が FWCI 合計の何%を占めるか（点線は均等な場合）</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="FWCI 合計の集中度">`;
+  let s = `<h3>FWCI 合計の集中度</h3><div class="small muted">上位 x% の論文が FWCI 合計の何%を占めるか（点線は均等な場合）。右下の値はジニ係数（0 は均等、1 に近いほど少数の論文に集中）</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="FWCI 合計の集中度">`;
   for (const t of [0,.25,.5,.75,1]){
     s += `<line class="grid" x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${m.l-6}" y="${Y(t)+4}" text-anchor="end">${t*100}%</text>`;
     s += `<text x="${X(t)}" y="${H-m.b+16}" text-anchor="middle">${t*100}%</text>`;
   }
   s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--ref)" stroke-dasharray="4 4"/>`;
   s += `<path d="${path}" fill="none" stroke="var(--series-1)" stroke-width="2"/>`;
+  s += `<text x="${X(1)-4}" y="${Y(0)-10}" text-anchor="end" style="font-size:13px;fill:var(--text)">ジニ係数 <tspan style="font-weight:650">${f2(gini)}</tspan></text>`;
   s += `<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>`;
   s += `<line id="lzX" stroke="var(--text-2)" stroke-width="1" y1="${m.t}" y2="${m.t+ih}" visibility="hidden"/><circle id="lzP" r="4.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
   s += `<rect id="lzHit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
